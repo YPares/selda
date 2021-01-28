@@ -462,6 +462,7 @@ selectDistinct = do
 data L = L Text
   deriving (Generic, Show, Eq)
 instance SqlRow L
+instance Relational L
 
 selectValuesDistinct = do
   res <- query $ distinct $ selectValues $ replicate 5 (L "Link")
@@ -470,6 +471,7 @@ selectValuesDistinct = do
 data Distinct = D { a :: Int, b :: Int }
     deriving Generic
 instance SqlRow Distinct
+instance Relational Distinct
 
 d_a = unsafeSelector 0 :: Selector Distinct Int
 d_b  = unsafeSelector 1 :: Selector Distinct Int

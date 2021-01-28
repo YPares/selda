@@ -356,6 +356,7 @@ data FKAddrs = FKAddrs
   , fkaCity :: Text
   } deriving Generic
 instance SqlRow FKAddrs
+instance Relational FKAddrs
 
 genModFkViolationFails = do
     setup

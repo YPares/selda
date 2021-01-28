@@ -3,9 +3,10 @@
 {-# LANGUAGE UndecidableInstances, MultiParamTypeClasses, OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts, ScopedTypeVariables, ConstraintKinds #-}
 {-# LANGUAGE GADTs, CPP, DeriveGeneric, DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
 -- | Generics utilities.
 module Database.Selda.Generic
-  ( Relational, Generic
+  ( Relational(..), Generic
   , tblCols, params, def, gNew, gRow
   ) where
 import Control.Monad.State
@@ -38,22 +39,55 @@ import Data.Monoid
 --   fields are instances of 'SqlValue' can be used with this module.
 --   Attempting to use functions in this module with any type which doesn't
 --   obey those constraints will result in a very confusing type error.
-type Relational a =
-  ( Generic a
-  , SqlRow a
-  , GRelation (Rep a)
-  )
+class (SqlRow a) => Relational a where
+  relParams :: a -> IO [Either Param Param]
+  
+  default relParams :: (Generic a, GRelation (Rep a)) => a -> IO [Either Param Param]
+  relParams = gParams . from
+  {-# INLINE relParams #-}
+  
+  relTblCols :: Proxy a
+             -> Maybe ColName
+             -> (Int -> Maybe ColName -> ColName)
+             -> State Int [ColInfo]
+  
+  default relTblCols :: (Generic a, GRelation (Rep a))
+                     => Proxy a
+                     -> Maybe ColName
+                     -> (Int -> Maybe ColName -> ColName)
+                     -> State Int [ColInfo]
+  relTblCols _ = gTblCols (Proxy :: Proxy (Rep a))
+  {-# INLINE relTblCols #-}
+  
+  relNew :: Proxy a -> [UntypedCol sql]
+  
+  default relNew :: (Generic a, GRelation (Rep a)) => Proxy a -> [UntypedCol sql]
+  relNew _ = gNew (Proxy :: Proxy (Rep a))
+  {-# INLINE relNew #-}
+  
+  relRow :: a -> [UntypedCol sql]
+  
+  default relRow :: (Generic a, GRelation (Rep a)) => a -> [UntypedCol sql]
+  relRow = gRow . from
+  {-# INLINE relRow #-}
+
+instance (SqlType a, SqlType b) => Relational (a,b)
+instance (SqlType a, SqlType b, SqlType c) => Relational (a,b,c)
+instance (SqlType a, SqlType b, SqlType c, SqlType d) => Relational (a,b,c,d)
+instance (SqlType a, SqlType b, SqlType c, SqlType d, SqlType e) => Relational (a,b,c,d,e)
+instance (SqlType a, SqlType b, SqlType c, SqlType d, SqlType e, SqlType f) => Relational (a,b,c,d,e,f)
+instance (SqlType a, SqlType b, SqlType c, SqlType d, SqlType e, SqlType f, SqlType g) => Relational (a,b,c,d,e,f,g)
 
 -- | Extract all insert parameters from a generic value.
 params :: Relational a => a -> [Either Param Param]
-params = unsafePerformIO . gParams . from
+params = unsafePerformIO . relParams
 
 -- | Extract all column names from the given type.
 --   If the type is not a record, the columns will be named @col_1@,
 --   @col_2@, etc.
 tblCols :: forall a. Relational a => Proxy a -> (Text -> Text) -> [ColInfo]
-tblCols _ fieldMod =
-    evalState (gTblCols (Proxy :: Proxy (Rep a)) Nothing rename) 0
+tblCols p fieldMod =
+    evalState (relTblCols p Nothing rename) 0
   where
     rename n Nothing     = mkColName $ fieldMod ("col_" <> pack (show n))
     rename _ (Just name) = modColName name fieldMod

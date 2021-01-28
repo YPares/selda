@@ -14,6 +14,7 @@ data Person = Person
   , cash :: Double
   } deriving (Generic, Show, Ord, Eq)
 instance SqlRow Person
+instance Relational Person
 
 modPeople :: Table Person
 modPeople = tableFieldMod "modpeople" [Single pName :- primary] $ \name ->

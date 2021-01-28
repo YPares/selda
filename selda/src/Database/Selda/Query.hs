@@ -34,7 +34,7 @@ selectValues :: forall s a. Relational a => [a] -> Query s (Row s a)
 selectValues [] = Query $ do
   st <- get
   put $ st {sources = sqlFrom [] EmptyTable : sources st}
-  return $ Many (gNew (Proxy :: Proxy (Rep a)))
+  return $ Many (relNew (Proxy :: Proxy a))
 selectValues (row:rows) = Query $ do
     names <- mapM (const freshName) firstrow
     let rns = [Named n (Col n) | n <- names]

@@ -165,6 +165,7 @@ newtype Only a = Only a
     , IsString
     )
 instance SqlType a => SqlRow (Only a)
+instance SqlType a => Relational (Only a)
 
 instance (TypeError
   ( 'TL.Text "'Only " ':<>: 'ShowType a ':<>: 'TL.Text "' is not a proper SQL type."
@@ -246,7 +247,7 @@ only (One x)  = Many [Untyped x]
 -- | Create a new row with the given fields.
 --   Any unassigned fields will contain their default values.
 new :: forall s a. Relational a => [Assignment s a] -> Row s a
-new fields = Many (gNew (Proxy :: Proxy (Rep a))) `with` fields
+new fields = Many (relNew (Proxy :: Proxy a)) `with` fields
 
 -- | Create a new row from the given value.
 --   This can be useful when you want to update all or most of a row:
@@ -254,7 +255,7 @@ new fields = Many (gNew (Proxy :: Proxy (Rep a))) `with` fields
 -- > update users (#uid `is` user_id)
 -- >              (\old -> row user_info `with` [...])
 row :: forall s a. Relational a => a -> Row s a
-row x = Many (gRow (G.from x))
+row x = Many (relRow x)
 
 -- | Convenient shorthand for @fmap (! sel) q@.
 --   The following two queries are quivalent:
