@@ -36,23 +36,23 @@ library
     Database.Selda.SqlType
     Database.Selda.Unsafe
     Database.Selda.Validation
+    Database.Selda.Exp
+    Database.Selda.Table
+    Database.Selda.SQL
+    Database.Selda.SqlRow
+    Database.Selda.Generic
   other-modules:
     Database.Selda.Column
     Database.Selda.Compile
-    Database.Selda.Exp
     Database.Selda.Frontend
     Database.Selda.FieldSelectors
-    Database.Selda.Generic
     Database.Selda.Inner
     Database.Selda.Prepared
     Database.Selda.Query
     Database.Selda.Query.Type
     Database.Selda.Selectors
-    Database.Selda.SQL
     Database.Selda.SQL.Print
     Database.Selda.SQL.Print.Config
-    Database.Selda.SqlRow
-    Database.Selda.Table
     Database.Selda.Table.Compile
     Database.Selda.Table.Type
     Database.Selda.Table.Validation

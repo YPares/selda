@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeOperators, DefaultSignatures, ScopedTypeVariables, CPP #-}
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Database.Selda.SqlRow
-  ( SqlRow (..), ResultReader
+  ( SqlRow (..), ResultReader (..)
   , GSqlRow
   , runResultReader, next
   ) where
