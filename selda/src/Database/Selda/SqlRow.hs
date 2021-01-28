@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 #endif
 module Database.Selda.SqlRow
-  ( SqlRow (..), ResultReader
+  ( SqlRow (..), ResultReader (..)
   , runResultReader, next
   ) where
 import Control.Monad.State.Strict

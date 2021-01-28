@@ -6,7 +6,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 -- | Generics utilities.
 module Database.Selda.Generic
-  ( Relational(..), Generic
+  ( Relational (..), Generic
   , tblCols, params, def, gNew, gRow
   ) where
 import Control.Monad.State
