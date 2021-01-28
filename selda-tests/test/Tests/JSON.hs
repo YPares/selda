@@ -19,6 +19,7 @@ data JSONPerson = JSONPerson
   , json :: Value
   } deriving Generic
 instance SqlRow JSONPerson
+instance Relational JSONPerson
 
 instance ToJSON Person
 instance FromJSON Person
