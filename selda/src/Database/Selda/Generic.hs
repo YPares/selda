@@ -8,6 +8,8 @@
 module Database.Selda.Generic
   ( Relational (..), Generic
   , tblCols, params, def, gNew, gRow
+  , oneValueParam, oneValueTblCol, oneValueNew, oneValueRow
+  , mkColName
   ) where
 import Control.Monad.State
 import Data.Dynamic
@@ -47,16 +49,14 @@ class (SqlRow a) => Relational a where
   {-# INLINE relParams #-}
   
   relTblCols :: Proxy a
-             -> Maybe ColName
              -> (Int -> Maybe ColName -> ColName)
              -> State Int [ColInfo]
   
   default relTblCols :: (Generic a, GRelation (Rep a))
                      => Proxy a
-                     -> Maybe ColName
                      -> (Int -> Maybe ColName -> ColName)
                      -> State Int [ColInfo]
-  relTblCols _ = gTblCols (Proxy :: Proxy (Rep a))
+  relTblCols _ = gTblCols (Proxy :: Proxy (Rep a)) Nothing
   {-# INLINE relTblCols #-}
   
   relNew :: Proxy a -> [UntypedCol sql]
@@ -87,7 +87,7 @@ params = unsafePerformIO . relParams
 --   @col_2@, etc.
 tblCols :: forall a. Relational a => Proxy a -> (Text -> Text) -> [ColInfo]
 tblCols p fieldMod =
-    evalState (relTblCols p Nothing rename) 0
+    evalState (relTblCols p rename) 0
   where
     rename n Nothing     = mkColName $ fieldMod ("col_" <> pack (show n))
     rename _ (Just name) = modColName name fieldMod
@@ -140,35 +140,48 @@ instance {-# OVERLAPPING #-} (G.Selector c, GRelation a) =>
   gNew _ = gNew (Proxy :: Proxy a)
   gRow (M1 x) = gRow x
 
-instance (Typeable a, SqlType a) => GRelation (K1 i a) where
-  gParams (K1 x) = do
-    res <- try $ return $! x
-    return $ case res of
-      Right x'                   -> [Right $ Param (mkLit x')]
-      Left DefaultValueException -> [Left $ Param (defaultValue :: Lit a)]
+oneValueParam :: forall a. (SqlType a) => a -> IO (Either Param Param)
+oneValueParam x = do
+  res <- try $ return $! x
+  return $ case res of
+    Right x'                   -> Right $ Param (mkLit x')
+    Left DefaultValueException -> Left $ Param (defaultValue :: Lit a)
 
-  gTblCols _ name rename = do
+oneValueTblCol :: (SqlType a)
+               => Proxy a
+               -> Maybe ColName
+               -> (Int -> Maybe ColName -> ColName)
+               -> State Int ColInfo
+oneValueTblCol p name rename = do
     n <- get
     put (n+1)
     let name' = rename n name
-    return
-      [ ColInfo
+    return $
+      ColInfo
         { colName = name'
-        , colType = sqlType (Proxy :: Proxy a)
+        , colType = sqlType p
         , colAttrs = optReq
         , colFKs = []
         , colExpr = Untyped (Col name')
         }
-      ]
-    where
+  where
       -- workaround for GHC 8.2 not resolving overlapping instances properly
       maybeTyCon = typeRepTyCon (typeRep (Proxy :: Proxy (Maybe ())))
       optReq
-        | typeRepTyCon (typeRep (Proxy :: Proxy a)) == maybeTyCon = [Optional]
-        | otherwise                                               = [Required]
+        | typeRepTyCon (typeRep p) == maybeTyCon = [Optional]
+        | otherwise                              = [Required]
 
-  gNew _ = [Untyped (Lit (defaultValue :: Lit a))]
-  gRow (K1 x) = [Untyped (Lit (mkLit x))]
+oneValueNew :: forall a sql. (SqlType a) => Proxy a -> UntypedCol sql
+oneValueNew _ = Untyped (Lit (defaultValue :: Lit a))
+
+oneValueRow :: (SqlType a) => a -> UntypedCol sql
+oneValueRow x = Untyped (Lit (mkLit x))
+
+instance (Typeable a, SqlType a) => GRelation (K1 i a) where
+  gParams (K1 x) = (:[]) <$> oneValueParam x
+  gTblCols _ name rename = (:[]) <$> oneValueTblCol (Proxy :: Proxy a) name rename
+  gNew _ = [oneValueNew (Proxy :: Proxy a)]
+  gRow (K1 x) = [oneValueRow x]
 
 instance (GRelation a, GRelation b) => GRelation (a G.:*: b) where
   gParams (a G.:*: b) = liftM2 (++) (gParams a) (gParams b)
