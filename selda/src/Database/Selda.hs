@@ -175,7 +175,7 @@ import Database.Selda.Frontend
       transaction,
       withoutForeignKeyEnforcement )
 import Database.Selda.Generic
-    ( Generic, gRow, gNew, Relational, def )
+    ( Generic, relNew, relRow, gRow, gNew, Relational, def )
 import Database.Selda.Inner
     ( Aggregates,
       LeftCols,

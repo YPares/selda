@@ -16,7 +16,7 @@ import Database.Selda.Column
       Row(..),
       Col(..),
       Columns(..) )
-import Database.Selda.Generic ( gNew, Relational, params )
+import Database.Selda.Generic ( gNew, relNew, Relational, params )
 import Database.Selda.Inner
     ( Aggregates(..),
       LeftCols,
