@@ -696,11 +696,11 @@ migrateUuidTableTest = do
   tryDropTable migrationUuid2
 
 migrationUuid1 :: Table (Only UUID)
-migrationUuid1 = table "tableUuid" [Single mtUuid1_1 :- primary]
+migrationUuid1 = table "tableuuid" [Single mtUuid1_1 :- primary]
 mtUuid1_1 = selectors migrationUuid1
 
 migrationUuid2 :: Table (Text, UUID)
-migrationUuid2 = table "tableUuid" [Single mtUuid2_1 :- primary]
+migrationUuid2 = table "tableuuid" [Single mtUuid2_1 :- primary]
 mtUuid2_1 :*: mtUuid2_2 = selectors migrationUuid2
 
 stepsUuid =
