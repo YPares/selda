@@ -2,7 +2,7 @@
 -- | Functionality for upgrading a table from one schema to another.
 module Database.Selda.Migrations
   ( Migration (..)
-  , migrate, migrateM, migrateAll, autoMigrate
+  , migrate, migrateM, migrateAll, autoMigrate, autoMigrateLog
   ) where
 import Control.Monad (void, when)
 import Control.Monad.Catch ( MonadMask, MonadThrow(..) )
@@ -99,23 +99,33 @@ autoMigrate :: (MonadSelda m, MonadMask m)
             => Bool -- ^ Enforce foreign keys during migration?
             -> [MigrationStep (Backend m)] -- ^ Migration steps to perform.
             -> m ()
-autoMigrate _ [] = do
+autoMigrate b s = autoMigrateLog b s (const $ return ())
+
+autoMigrateLog :: (MonadSelda m, MonadMask m)
+               => Bool -- ^ Enforce foreign keys during migration?
+               -> [MigrationStep (Backend m)] -- ^ Migration steps to perform.
+               -> (String -> m ()) -- ^ To log the different diffs
+               -> m ()
+autoMigrateLog _ [] _ = do
   return ()
-autoMigrate fks steps = wrap fks $ do
+autoMigrateLog fks steps log = wrap fks $ do
     diffs <- sequence finalState
     when (any (/= TableOK) diffs) $ do
-      steps' <- reverse <$> calculateSteps revSteps
+      log $ "Diff when checking current state against wanted final state:\n" ++ show diffs
+      steps' <- reverse <$> calculateSteps (length revSteps) log revSteps
       mapM_ performStep steps'
   where
     revSteps = reverse steps
     finalState = [diffTable to | Migration _ to _ <- head revSteps]
 
-    calculateSteps (step:ss) = do
+    calculateSteps n log (step:ss) = do
       diffs <- mapM (\(Migration from _ _) -> diffTable from) step
       if all (== TableOK) diffs
         then return [step]
-        else (step:) <$> calculateSteps ss
-    calculateSteps [] = do
+        else do
+          log $ "Diff when checking current state against start state of step " <> show n <> ":\n" <> show diffs
+          (step:) <$> calculateSteps (n-1) log ss
+    calculateSteps _ _ [] = do
       throwM $ ValidationError "no starting state matches the current state of the database"
 
     performStep = mapM_ (\(Migration t1 t2 upg) -> migrateInternal t1 t2 upg)
