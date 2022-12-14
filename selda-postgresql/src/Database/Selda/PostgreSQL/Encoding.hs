@@ -30,7 +30,7 @@ import Data.Int (Int16, Int32, Int64)
 -- | OIDs for all types used by Selda.
 blobType, boolType, intType, int32Type, int16Type, textType, doubleType,
   dateType, timeType, timestampType, nameType, varcharType, uuidType,
-  jsonbType :: Oid
+  jsonbType, textArrayType :: Oid
 boolType      = Oid 16
 intType       = Oid 20
 int32Type     = Oid 23
@@ -45,6 +45,9 @@ blobType      = Oid 17
 varcharType   = Oid 1043
 uuidType      = Oid 2950
 jsonbType     = Oid 3802
+-- -- -- -- -- https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat
+textArrayType = Oid 1009
+
 
 bytes :: Enc.Encoding -> BS.ByteString
 bytes = Enc.encodingBytes
@@ -73,6 +76,7 @@ fromSqlValue (LCustom TJSON (LBlob b)) = Just ( jsonbType
                                               , bytes $ Enc.jsonb_bytes b
                                               , Binary)
 fromSqlValue (LCustom _ l) = fromSqlValue l
+fromSqlValue (LTextArray s) = Just (textArrayType, bytes $ Enc.array_foldable 25 (Just . Enc.text_strict) s, Binary)
 
 -- | Get the corresponding OID for an SQL type representation.
 fromSqlType :: SqlTypeRep -> Oid
@@ -88,6 +92,7 @@ fromSqlType TBlob     = blobType
 fromSqlType TRowID    = intType
 fromSqlType TUUID     = uuidType
 fromSqlType TJSON     = jsonbType
+fromSqlType TTextArray = textArrayType
 
 -- | Convert the given postgres return value and type to an @SqlValue@.
 toSqlValue :: Oid -> BS.ByteString -> SqlValue

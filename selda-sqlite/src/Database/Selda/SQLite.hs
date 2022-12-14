@@ -16,7 +16,7 @@ import Control.Monad.Catch
 import Data.ByteString.Lazy (toStrict)
 import Data.Dynamic
 import Data.Int (Int64)
-import Data.Text as Text (pack, toLower, take)
+import Data.Text as Text (pack, toLower, take, intercalate)
 import Data.Time (FormatTime, formatTime, defaultTimeLocale)
 import Data.UUID.Types (toByteString)
 import Database.SQLite3
@@ -222,6 +222,7 @@ toSqlData (LNull)       = SQLNull
 toSqlData (LJust x)     = toSqlData x
 toSqlData (LCustom _ l) = toSqlData l
 toSqlData (LUUID x)     = SQLBlob (toStrict $ toByteString x)
+toSqlData (LTextArray s) = SQLText (intercalate "," s)
 
 fromSqlData :: SQLData -> SqlValue
 fromSqlData (SQLInteger i) = SqlInt64 $ fromIntegral i

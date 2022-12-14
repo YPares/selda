@@ -62,6 +62,7 @@ data SqlTypeRep
   | TBlob
   | TUUID
   | TJSON
+  | TTextArray
     deriving (Show, Eq, Ord)
 
 -- | Any datatype representable in (Selda's subset of) SQL.
@@ -117,6 +118,7 @@ data Lit a where
   LNull     :: SqlType a => Lit (Maybe a)
   LCustom   :: SqlTypeRep  -> Lit a -> Lit b
   LUUID     :: !UUID       -> Lit UUID
+  LTextArray :: ![Text]     -> Lit [Text]
 
 -- | The SQL type representation for the given literal.
 litType :: Lit a -> SqlTypeRep
@@ -136,6 +138,7 @@ litType (x@LNull)     = sqlType (proxyFor x)
     proxyFor _ = Proxy
 litType (LCustom t _) = t
 litType (LUUID{})     = TUUID
+litType (LTextArray{}) = TTextArray
 
 instance Eq (Lit a) where
   a == b = compLit a b == EQ
@@ -158,6 +161,7 @@ litConTag (LBlob{})     = 10
 litConTag (LNull)       = 11
 litConTag (LCustom{})   = 12
 litConTag (LUUID{})     = 13
+litConTag (LTextArray{}) = 14
 
 -- | Compare two literals of different type for equality.
 compLit :: Lit a -> Lit b -> Ordering
@@ -173,6 +177,7 @@ compLit (LBlob x)     (LBlob x')     = x `compare` x'
 compLit (LJust x)     (LJust x')     = x `compLit` x'
 compLit (LCustom _ x) (LCustom _ x') = x `compLit` x'
 compLit (LUUID x)     (LUUID x')     = x `compare` x'
+compLit (LTextArray x) (LTextArray x') = x `compare` x'
 compLit a             b              = litConTag a `compare` litConTag b
 
 -- | Some value that is representable in SQL.
@@ -187,6 +192,7 @@ data SqlValue where
   SqlTime    :: !TimeOfDay  -> SqlValue
   SqlDate    :: !Day        -> SqlValue
   SqlNull    :: SqlValue
+  SqlStringA :: ![Text]     -> SqlValue
 
 instance Show SqlValue where
   show (SqlInt32 n)   = "SqlInt32 " ++ show n
@@ -198,6 +204,7 @@ instance Show SqlValue where
   show (SqlUTCTime t) = "SqlUTCTime " ++ show t
   show (SqlTime t)    = "SqlTime " ++ show t
   show (SqlDate d)    = "SqlDate " ++ show d
+  show (SqlStringA s) = "SqlStringA " ++ show s
   show (SqlNull)      = "SqlNull"
 
 instance Show (Lit a) where
@@ -214,6 +221,7 @@ instance Show (Lit a) where
   show (LNull)       = "Nothing"
   show (LCustom _ l) = show l
   show (LUUID u)     = toString u
+  show (LTextArray s) = show s
 
 -- | A row identifier for some table.
 --   This is the type of auto-incrementing primary keys.
@@ -336,6 +344,13 @@ instance SqlType Text where
   fromSql (SqlString x) = x
   fromSql v             = fromSqlError $ "text column with non-text value: " ++ show v
   defaultValue = LText ""
+
+instance SqlType [Text] where
+  mkLit = LTextArray
+  sqlType _ = TTextArray
+  fromSql (SqlStringA x) = x
+  fromSql v              = fromSqlError $ "text column with non-text-array value: " ++ show v
+  defaultValue = LTextArray []
 
 instance SqlType LazyText.Text where
   mkLit = LCustom TText . LText . mconcat . LazyText.toChunks
